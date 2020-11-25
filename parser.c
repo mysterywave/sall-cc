@@ -447,7 +447,7 @@ tree *parse_while() {
 
 tree *parse_if() {
     debug(0, "parse_if()\n");
-    tree *out;
+    tree *out = create_tree(TREETYPE_IF);
     expect(TOK_LPAREN); // expect a (
     tree *expression = parse_expression(TOK_RPAREN); // parse expression until it finds )
     out->left = expression;
@@ -514,8 +514,6 @@ tree *parse_code() {
             parse_expression(TOK_SEMICOLON);
         }
     }
-    token *t = tokenizer_peek();
-    out->right = parse_code();
     return out;
 }
 

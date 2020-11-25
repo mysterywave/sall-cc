@@ -12,6 +12,7 @@ enum {
     TREETYPE_FUNCTION_DEFINITION,
     TREETYPE_BLOCK,
     TREETYPE_ASSIGN,
+    TREETYPE_IF,
 };
 
 typedef struct tree tree;
