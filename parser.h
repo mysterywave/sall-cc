@@ -15,6 +15,7 @@ enum {
     TREETYPE_IF,
     TREETYPE_WHILE,
     TREETYPE_FOR,
+    TREETYPE_VARIABLE,
 };
 
 typedef struct tree tree;

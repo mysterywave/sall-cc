@@ -467,20 +467,20 @@ tree *parse_if() {
 
 tree *parse_for() {
     debug(0, "parse_for()\n");
-    tree *out;
+    tree *out = NULL;
     return out;
 }
 
 tree *parse_switch() {
     debug(0, "parse_switch()\n");
-    tree *out;
+    tree *out = NULL;
     return out;
 }
 
 // TODO
 tree *parse_asm(token *asmtok) {
     debug(0, "parse_asm()\n");
-    tree *out;
+    tree *out = NULL;
     token *tok = tokenizer_get();
     while(tok->type != TOK_EOF && tok->type != TOK_SEMICOLON) {
         tok = tokenizer_get();
@@ -491,9 +491,11 @@ tree *parse_asm(token *asmtok) {
     return out;
 }
 
+void print_treetype(int type);
+
 tree *parse_code() {
     debug(1, "parse_code()\n");
-    tree *out;
+    tree *out = NULL;
     int type = tokenizer_peek()->type;
     token *next = expect(
         TOK_WHILE, TOK_IF, TOK_FOR,
@@ -540,6 +542,7 @@ tree *parse_code() {
         token *peeked = tokenizer_peek();
         while(1) {
             tmp->left = parse_code();
+            printf("\n");
             peeked = tokenizer_peek();
             if(peeked->type == TOK_RBRACE || peeked->type == TOK_EOF) {
                 break;
@@ -571,7 +574,7 @@ tree *parse_code() {
 
 tree *parse_declaration() {
     debug(0, "parse_declaration()\n");
-    tree *out = create_tree(TREETYPE_NULL);
+    tree *out = NULL;
     variable *var = parse_type();
     token *name = expect(TOK_IDENTIFIER);
     var->name = name->string;
@@ -588,11 +591,11 @@ tree *parse_declaration() {
             parse_arg_definition(arglist);
         }
         var->arguments = arglist;
-        parse_code();
+        out->left = parse_code();
     } else if(peeked->type == TOK_SEMICOLON) { // definition
-        ;
+        out = create_tree(TREETYPE_NULL); // TODO
     } else { // asignment definition
-        ;
+        out = create_tree(TREETYPE_NULL); // TODO
     }
     return out;
 }
@@ -628,20 +631,56 @@ tree *create_tree(int type) {
     return out;
 }
 
-void print_tree2(tree *t, int indent) {
-    if(t->left || t->right) {
-        printf("tree\n", indent, "");
+char *get_treetype_name(int type) {
+    switch(type) {
+        case TREETYPE_NULL:
+            return "NULL";
+        case TREETYPE_DECLARATION_LIST:
+            return "DECLARATION_LIST";
+        case TREETYPE_STATEMENT_LIST:
+            return "STATEMENT_LIST";
+        case TREETYPE_FUNCTION_DEFINITION:
+            return "FUNCTION_DEFINITION";
+        case TREETYPE_BLOCK:
+            return "BLOCK";
+        case TREETYPE_ASSIGN:
+            return "ASSIGN";
+        case TREETYPE_IF:
+            return "IF";
+        case TREETYPE_WHILE:
+            return "WHILE";
+        case TREETYPE_FOR:
+            return "FOR";
+    }
+    return "(unknown)";
+}
+
+void print_treetype(int type) {
+    if(type == TREETYPE_NULL) {
+        printf("\x1b[91;1m");
     } else {
-        printf("tree {\n", indent, "");
-        if(t->left) {
+        printf("\x1b[94;1m");
+    }
+    printf("%s", get_treetype_name(type));
+    printf("\x1b[0m");
+}
+
+void print_tree2(tree *t, int indent) {
+    if(!t->left && !t->right) {
+        print_treetype(t->type);
+        printf("\n");
+    } else {
+        print_treetype(t->type);
+        printf(" {\n");
+        if(t->left != NULL) {
             printf("%*sleft = ", indent + 2, "");
             print_tree2(t->left, indent + 2);
         }
-        if(t->right) {
+        if(t->right != NULL) {
             printf("%*sright = ", indent + 2, "");
             print_tree2(t->right, indent + 2);
         }
-        printf("%*s}", indent, "");
+        printf("%*s}\n", indent, "");
     }
 }
 
