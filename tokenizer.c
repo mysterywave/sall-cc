@@ -47,6 +47,7 @@ struct {
     {"void", TOK_VOID},
     {"volitile", TOK_VOLATILE},
     {"while", TOK_WHILE},
+    {"asm", TOK_ASM},
     
     // operators
     {"=", TOK_EQUAL},
@@ -150,8 +151,6 @@ FILE *file;
 char *filename;
 int line_num;
 int line_offset;
-int line_offset_next;
-int line_length;
 string_builder current_line;
 token *output;
 string_builder tok;
@@ -238,7 +237,6 @@ void tokenizer_init(FILE *in, char *filename_in) {
     peeked = 0;
     newline_found = 1;
     line_offset = 0;
-    line_offset_next = 0;
     output = NULL;
     int i;
     for(i = 0; i < sizeof(multi_char_operators) / sizeof(multi_char_operators[0]); i++) {
@@ -260,23 +258,23 @@ token *tokenizer_get2() {
             line_num++;
             string_builder_clear(&current_line);
             newline_found = 0;
-            line_length = 0;
-            line_offset = line_offset_next;
-            line_offset_next = 0;
+            line_offset = 0;
             while((c = fgetc(file)) != '\n' && c != EOF) {
                 string_builder_add(&current_line, c);
-                line_length++;
             }
-            line_length++;
+            string_builder_get(&current_line);
+            if(c == EOF) {
+                break;
+            }
         }
         while(c != EOF) {
             c = string_builder_get_char(&current_line, line_offset++);
             if(type == 2) {
-                while(c != ending_char && !(c == EOF || line_offset == line_length)) {
+                while(c != ending_char && !(c == EOF || line_offset > current_line.length)) {
                     string_builder_add(&tok, c);
                     c = string_builder_get_char(&current_line, line_offset++);
                 }
-                if(line_offset == line_length) {
+                if(line_offset > current_line.length) {
                     if(ending_char == '"') {
                         printf("error: String is split over newline.\n");
                     } else {
@@ -290,7 +288,7 @@ token *tokenizer_get2() {
                 }
                 c = string_builder_get_char(&current_line, line_offset++);
             }
-            if(line_offset == line_length) {
+            if(line_offset > current_line.length) {
                 newline_found = 1;
                 if(tok.length != 0) {
                     char *string = string_builder_get(&tok);
@@ -300,21 +298,6 @@ token *tokenizer_get2() {
                 } else {
                     string_builder_clear(&tok);
                     break;
-                }
-            }
-            if(line_offset < line_length - 1 && c == '/') {
-                char c1 = string_builder_get_char(&current_line, line_offset);
-                if(c1 == '/') {
-                    newline_found = 1;
-                    if(tok.length != 0) {
-                        char *string = string_builder_get(&tok);
-                        token *output = string_to_token(string);
-                        string_builder_clear(&tok);
-                        return output;
-                    } else {
-                        string_builder_clear(&tok);
-                        break;
-                    }
                 }
             }
             if(c == ' ' || c == '\t') {
@@ -352,9 +335,9 @@ token *tokenizer_get2() {
     if(strlen(string) != 0) {
         token *out = string_to_token(string);
         string_builder_clear(&tok);
-        printf("LAST LINE: %d\n", line_num);
         return out;
     }
+    printf("####################### RETURNING EOF #####################\n");
     output = create_token(TOK_EOF);
     return output;
 }
@@ -449,7 +432,7 @@ int get_toktype_from_string(char *string) {
     return -1;
 }
 
-char *get_string_from_toketype(int value) {
+char *get_string_from_toktype(int value) {
     int i;
     for(i = 0; i < sizeof(convert_table) / sizeof(convert_table[0]); i++) {
         if(convert_table[i].value == value) {

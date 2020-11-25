@@ -37,6 +37,7 @@ enum {
     TOK_VOID,
     TOK_VOLATILE,
     TOK_WHILE,
+    TOK_ASM,
     
     // operators
     TOK_EQUAL,
@@ -127,7 +128,7 @@ token *tokenizer_peek();
 void delete_token(token *t);
 
 token *string_to_token(char *string);
-char *get_string_from_toketype(int type);
+char *get_string_from_toktype(int type);
 void free_tokens();
 int get_toktype_from_string();
 char *token_to_string(token *tok);

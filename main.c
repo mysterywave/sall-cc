@@ -8,14 +8,21 @@
 
 void debug_tokens() {
     while(tokenizer_peek()->type != TOK_EOF) {
-        printf("TOKEN: %s\n", token_to_string(tokenizer_get()));
+        token *tok = tokenizer_get();
+        char *s1 = get_string_from_toktype(tok->type);
+        char *s2 = token_to_string(tok);
+        if(strcmp(s1, s2) == 0) {
+            printf("TOKEN: %s\n", s2);
+        } else {
+            printf("TOKEN: %s, %s\n", s2, s1);
+        }
     }
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
-    char *input_filename;
-    char *output_filename;
+    char *input_filename = "stdin";
+    char *output_filename = "stdout";
     FILE *input = stdin;
     FILE *output = stdout;
     if(argc == 2) {
