@@ -1,7 +1,8 @@
 # tool macros
 CC := gcc
-CCFLAGS := -static -O3
+CCFLAGS :=
 DBGFLAGS := -g
+PRODFLAGS := -static -O3
 CCOBJFLAGS := $(CCFLAGS) -c
 
 # path macros
@@ -35,10 +36,10 @@ default: makedir all
 
 # non-phony targets
 $(TARGET): $(OBJ)
-	$(CC) $(CCFLAGS) -o $@ $(OBJ)
+	$(CC) $(PRODFLAGS) $(CCFLAGS) -o $@ $(OBJ)
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c*
-	$(CC) $(CCOBJFLAGS) -o $@ $<
+	$(CC) $(PRODFLAGS) $(CCOBJFLAGS) -o $@ $<
 
 $(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
 	$(CC) $(CCOBJFLAGS) $(DBGFLAGS) -o $@ $<
