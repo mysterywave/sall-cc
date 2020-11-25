@@ -13,6 +13,8 @@ enum {
     TREETYPE_BLOCK,
     TREETYPE_ASSIGN,
     TREETYPE_IF,
+
+    TREETYPE_MACRO
 };
 
 typedef struct tree tree;

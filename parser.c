@@ -439,6 +439,12 @@ tree *parse_expression(int end_type) {
     return parse_reverse_polish(tmp);
 }
 
+tree *parse_macro() {
+    debug(0, "parse_macro()\n");
+    tree *out = create_tree(TREETYPE_MACRO);
+    //jumpback
+}
+
 tree *parse_while() {
     debug(0, "parse_while()\n");
     tree *out;
@@ -472,12 +478,16 @@ tree *parse_code() {
     tree *out;
     int type = tokenizer_peek()->type;
     token *next = expect(
+        TOK_DEFINE, TOK_INCLUDE,
         TOK_WHILE, TOK_IF, TOK_FOR,
         TOK_IDENTIFIER,
         TOK_LBRACE,
         TOK_VOID, TOK_CHAR, TOK_INT, TOK_LONG, TOK_FLOAT, TOK_DOUBLE, TOK_STRUCT, TOK_UNION
     );
-    if(next->type == TOK_WHILE) {
+
+    if (next->type == TOK_DEFINE || next->type == TOK_INCLUDE) {
+        out = parse_macro();
+    } else if(next->type == TOK_WHILE) {
         out = parse_while();
     } else if(next->type == TOK_IF) {
         out = parse_if();

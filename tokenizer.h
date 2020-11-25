@@ -3,6 +3,10 @@
 enum {
     TOK_EOF = 0,
     TOK_ERROR,
+
+    // macros
+    TOK_DEFINE,
+    TOK_INCLUDE,
     
     // keywords
     TOK_AUTO,

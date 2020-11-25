@@ -14,6 +14,10 @@ struct {
     char *string;
     int value;
 } convert_table[] = {
+    // macros
+    {"#define", TOK_DEFINE},
+    {"#include", TOK_INCLUDE},
+
     // keywords
     {"auto", TOK_AUTO},
     {"break", TOK_BREAK},
