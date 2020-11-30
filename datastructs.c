@@ -85,7 +85,7 @@ void print_variable(variable *var) {
             printf("  \x1b[94;1mtype\x1b[0m = union\n");
             break;
     }
-    printf("  \x1b[94;1mglobal_id\x1b[0m = %d\n", var->global_id);
+    //printf("  \x1b[94;1mglobal_id\x1b[0m = %d\n", var->global_id);
     if(var->pointers != 0) {
         printf("  \x1b[94;1mpointers\x1b[0m = %d\n", var->pointers);
     }
@@ -172,9 +172,10 @@ token *toklist_get(toklist *list, int id) {
     return list->list[id];
 }
 
-opstack_link *create_opstack_link(token *tok) {
+opstack_link *create_opstack_link(void *value, int prefix_postfix) {
     opstack_link *link = malloc(sizeof(opstack_link));
-    link->value = tok;
+    link->value = value;
+    link->prefix_postfix = prefix_postfix;
     link->last = NULL;
     link->next = NULL;
     return link;
@@ -197,8 +198,8 @@ void delete_opstack(opstack *stack) {
     free(stack);
 }
 
-void opstack_push(opstack *stack, token *tok) {
-    opstack_link *link = create_opstack_link(tok);
+void opstack_push(opstack *stack, void *value, int prefix_postfix) {
+    opstack_link *link = create_opstack_link(value, prefix_postfix);
     if(stack->start == NULL) {
         stack->start = link;
         stack->end = link;
@@ -209,24 +210,56 @@ void opstack_push(opstack *stack, token *tok) {
     }
 }
 
-token *opstack_peek(opstack *stack) {
-    return stack->end->value;
+opstack_link opstack_peek(opstack *stack) {
+    if(stack->end != NULL) {
+        return *(stack->end);
+    }
+    printf("Error: cannot peek stack.\n");
+    exit(1);
 }
 
-token *opstack_pop(opstack *stack) {
-    token *out;
+opstack_link opstack_pop(opstack *stack) {
+    opstack_link out;
     if(stack->start == NULL) {
-        return NULL;
+        printf("Error: cannot pop from stack.\n");
+        exit(1);
     } else if(stack->start == stack->end) {
-        out = stack->start->value;
-        stack->end = NULL;
+        out = *(stack->start);
         free(stack->start);
+        stack->end = NULL;
         stack->start = NULL;
     } else {
-        out = stack->end->value;
+        out = *(stack->end);
         stack->end = stack->end->last;
         free(stack->end->next);
         stack->end->next = NULL;
+    }
+    return out;
+}
+
+opstack_link opstack_peek_fifo(opstack *stack) {
+    if(stack->start != NULL) {
+        return *(stack->start);
+    }
+    printf("Error: cannot peek stack.\n");
+    exit(1);
+}
+
+opstack_link opstack_pop_fifo(opstack *stack) {
+    opstack_link out;
+    if(stack->start == NULL) {
+        printf("Error: cannot pop from stack.\n");
+        exit(1);
+    } else if(stack->start == stack->end) {
+        out = *(stack->start);
+        free(stack->start);
+        stack->end = NULL;
+        stack->start = NULL;
+    } else {
+        out = *(stack->start);
+        stack->start = stack->start->next;
+        free(stack->start->last);
+        stack->start->last = NULL;
     }
     return out;
 }
@@ -235,7 +268,7 @@ int opstack_empty(opstack *stack) {
     return stack->start == NULL;
 }
 
-void print_opstack(opstack *stack) {
+void print_opstack_tokens(opstack *stack) {
     opstack_link *item = stack->start;
     int i = 0;
     printf("[");

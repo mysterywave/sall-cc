@@ -35,7 +35,7 @@ enum {
 };
 
 typedef struct variable {
-    int global_id;
+    //int global_id;
     
     char *name;
     int type;
@@ -44,6 +44,8 @@ typedef struct variable {
     int is_argument;
     int is_function;
     int is_constant;
+    
+    int scope_level;
     
     varlist *arguments;
 } variable;
@@ -79,7 +81,8 @@ token *toklist_get(toklist *list, int id);
 typedef struct opstack_link opstack_link;
 
 struct opstack_link {
-    token *value;
+    void *value;
+    int prefix_postfix;
     opstack_link *last;
     opstack_link *next;
 };
@@ -92,8 +95,12 @@ typedef struct opstack {
 opstack *create_opstack();
 void delete_opstack(opstack *stack);
 
-void opstack_push(opstack *stack, token *tok);
-token *opstack_peek(opstack *stack);
-token *opstack_pop(opstack *stack);
+void opstack_push(opstack *stack, void *value, int prefix_postfix);
+opstack_link opstack_peek(opstack *stack);
+opstack_link opstack_pop(opstack *stack);
+opstack_link opstack_peek_fifo(opstack *stack);
+opstack_link opstack_pop_fifo(opstack *stack);
 int opstack_empty(opstack *stack);
-void print_opstack(opstack *stack);
+
+// only use this if the opstack contains tokens
+void print_opstack_tokens(opstack *stack);

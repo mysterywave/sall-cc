@@ -99,14 +99,19 @@ struct {
     {"*", TOK_STAR},
     {"&", TOK_AMPERSAND},
     
-    {NULL, TOK_ADD},
-    {NULL, TOK_SUBTRACT},
-    {NULL, TOK_MULTIPLY},
-    {NULL, TOK_POSITIVE},
-    {NULL, TOK_NEGATIVE},
-    {NULL, TOK_POINTER},
-    {NULL, TOK_ADDRESS},
-    {NULL, TOK_BITWISE_AND},
+    // these should go after the ambiguous operators
+    {"+", TOK_ADD},
+    {"-", TOK_SUBTRACT},
+    {"*", TOK_MULTIPLY},
+    {"+", TOK_POSITIVE},
+    {"-", TOK_NEGATIVE},
+    {"*", TOK_POINTER},
+    {"&", TOK_ADDRESS},
+    {"&", TOK_BITWISE_AND},
+    {"++", TOK_PREFIX_INCREMENT},
+    {"--", TOK_PREFIX_DECREMENT},
+    {"++", TOK_POSTFIX_INCREMENT},
+    {"--", TOK_POSTFIX_DECREMENT},
     
     {"[ INT CONST ]", TOK_INT_CONST},
     {"[ LONG CONST ]", TOK_LONG_CONST},
@@ -473,4 +478,17 @@ void print_token(token *tok) {
         printf("%.*s\n", current_line.length - (pos + len), line + pos + len);
         printf("\x1b[92;1m%*s^\x1b[0m\n", tok->line_offset - 1, "");
     }
+}
+
+int is_operator(int type) {
+    int t = (type & 0xF000);
+    return t == 0x2000 || t == 0x3000;
+}
+
+int is_single_argument(int type) {
+    return (type & 0xF000) == 0x3000;
+}
+
+int is_constant(int type) {
+    return (type & 0xF000) == 0x5000;
 }

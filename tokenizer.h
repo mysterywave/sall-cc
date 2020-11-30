@@ -1,11 +1,11 @@
 #pragma once
 
 enum {
-    TOK_EOF = 0,
+    TOK_EOF = 0x0000,
     TOK_ERROR,
     
     // keywords
-    TOK_AUTO,
+    TOK_AUTO = 0x1000,
     TOK_BREAK,
     TOK_CASE,
     TOK_CHAR,
@@ -40,7 +40,7 @@ enum {
     TOK_ASM,
     
     // operators
-    TOK_EQUAL,
+    TOK_EQUAL = 0x2000,
     TOK_PLUS_EQUAL,
     TOK_MINUS_EQUAL,
     TOK_TIMES_EQUAL,
@@ -51,16 +51,12 @@ enum {
     TOK_XOR_EQUAL,
     TOK_LSHIFT_EQUAL,
     TOK_RSHIFT_EQUAL,
-    TOK_INCREMENT,
-    TOK_DECREMENT,
     TOK_DIVIDE,
     TOK_MOD,
-    TOK_BITWISE_NOT,
     TOK_BITWISE_OR,
     TOK_XOR,
     TOK_LSH,
     TOK_RSH,
-    TOK_NOT,
     TOK_AND,
     TOK_OR,
     TOK_EQUAL_TO,
@@ -83,38 +79,49 @@ enum {
     TOK_RBRACE,
     TOK_SEMICOLON,
     
-    // ambiguous
-    TOK_PLUS,
+    TOK_ADD,
+    TOK_SUBTRACT,
+    TOK_MULTIPLY,
+    TOK_BITWISE_AND,
+    
+    // single argument operators
+    
+    TOK_POSITIVE = 0x3000,
+    TOK_NEGATIVE,
+    TOK_POINTER,
+    TOK_ADDRESS,
+    TOK_PREFIX_INCREMENT,
+    TOK_PREFIX_DECREMENT,
+    TOK_POSTFIX_INCREMENT,
+    TOK_POSTFIX_DECREMENT,
+    TOK_BITWISE_NOT,
+    TOK_NOT,
+    
+    // ambiguous operators
+    
+    TOK_PLUS = 0x4000,
     TOK_MINUS,
     TOK_STAR,
     TOK_AMPERSAND,
-    
-    TOK_ADD,
-    TOK_POSITIVE,
-    TOK_SUBTRACT,
-    TOK_NEGATIVE,
-    TOK_MULTIPLY,
-    TOK_POINTER,
-    TOK_ADDRESS,
-    TOK_BITWISE_AND,
+    TOK_INCREMENT,
+    TOK_DECREMENT,
     
     // const
-    TOK_INT_CONST,
+    TOK_INT_CONST = 0x5000,
     TOK_LONG_CONST,
     TOK_CHAR_CONST,
     TOK_STRING_CONST,
     TOK_FLOAT_CONST,
     TOK_DOUBLE_CONST,
     
-    TOK_IDENTIFIER
-    
-    // internal
+    TOK_IDENTIFIER = 0x6000
 };
 
 typedef struct token {
     int type;
     char *string;
     int value;
+    int prefix_postfix;
     
     // for error printing
     int line_offset;
@@ -133,3 +140,7 @@ void free_tokens();
 int get_toktype_from_string();
 char *token_to_string(token *tok);
 void print_token(token *tok);
+
+int is_operator(int toktype);
+int is_single_argument(int type);
+int is_constant(int toktype);

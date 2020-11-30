@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "parser.h"
 #include "tokenizer.h"
+#include "optimizer.h"
 
 #define PARSER_DEBUG
 
@@ -25,6 +27,7 @@ extern int line_num;
 
 varlist *all_vars;
 varlist *local_vars;
+int current_scope;
 
 variable *parse_type();
 void parse_arg_definition(varlist *arglist);
@@ -42,11 +45,6 @@ tree *parse();
 void cause_segfault() {
     int *i = 0;
     *i = 0;
-}
-
-void add_variable(variable *var) {
-    var->global_id = all_vars->length;
-    varlist_add(all_vars, var);
 }
 
 extern toklist *tokens_to_free;
@@ -95,6 +93,33 @@ void _error(token *tok, char *format, ...) {
     exit(1);
 }
 
+void add_variable(variable *var) {
+    //var->global_id = all_vars->length;
+    var->scope_level = current_scope;
+    varlist_add(all_vars, var);
+    varlist_add(local_vars, var);
+}
+
+// tok should always be an identifier
+variable *get_variable_noerror(token *tok) {
+    char *s = tok->string;
+    int i;
+    for(i = local_vars->length - 1; i >= 0; i--) {
+        if(strcmp(s, local_vars->list[i]->name) == 0) {
+            return local_vars->list[i];
+        }
+    }
+    return NULL;
+}
+
+variable *get_variable(token *tok) {
+    variable *out = get_variable_noerror(tok);
+    if(out == NULL) {
+        error(tok, "Unknown identifier\n");
+    }
+    return out;
+}
+
 token *_expect(int n, ...) {
     token *tok = tokenizer_get();
     
@@ -107,7 +132,8 @@ token *_expect(int n, ...) {
         }
     }
     va_end(ap);
-    printf("Expecting ");
+    
+    /*printf("Expecting ");
     va_list ap2;
     va_start(ap2, n);
     for(i = 0; i < n; i++) {
@@ -120,7 +146,8 @@ token *_expect(int n, ...) {
             printf(", \"%s\"", get_string_from_toktype(j));
         }
     }
-    va_end(ap2);
+    va_end(ap2);*/
+    
     error(tok, "Unexpected token\n");
 }
 
@@ -176,11 +203,6 @@ void parse_arg_definition(varlist *arglist) {
     }
 }
 
-tree *parse_reverse_polish(opstack *stack) {
-    tree *out = NULL;
-    return out;
-}
-
 int precedence(token *tok, int prefix_postfix) {
     switch(tok->type) {
         case TOK_LPAREN:
@@ -233,7 +255,29 @@ int precedence(token *tok, int prefix_postfix) {
             return 14;
         case TOK_COMMA:
             return 15;
-        case TOK_INCREMENT:
+        case TOK_POSTFIX_INCREMENT:
+        case TOK_POSTFIX_DECREMENT:
+            return 1;
+        case TOK_PREFIX_INCREMENT:
+        case TOK_PREFIX_DECREMENT:
+            return 2;
+        case TOK_MULTIPLY:
+            return 3;
+        case TOK_POINTER:
+            return 2;
+        case TOK_BITWISE_AND:
+            return 8;
+        case TOK_ADDRESS:
+            return 2;
+        case TOK_POSITIVE:
+            return 4;
+        case TOK_ADD:
+            return 2;
+        case TOK_NEGATIVE:
+            return 4;
+        case TOK_SUBTRACT:
+            return 2;
+        /*case TOK_INCREMENT:
         case TOK_DECREMENT:
             if(prefix_postfix == -1) {
                 return 1;
@@ -258,7 +302,7 @@ int precedence(token *tok, int prefix_postfix) {
                 return 4;
             } else {
                 return 2;
-            }
+            }*/
     }
     // should never get here
     error(tok, "Strange operator: %s\n", get_string_from_toktype(tok->type));
@@ -308,7 +352,29 @@ int is_left_associative(token *tok, int prefix_postfix) {
             return 0;
         case TOK_COMMA:
             return 1;
-        case TOK_INCREMENT:
+        case TOK_POSTFIX_INCREMENT:
+        case TOK_POSTFIX_DECREMENT:
+            return 1;
+        case TOK_PREFIX_INCREMENT:
+        case TOK_PREFIX_DECREMENT:
+            return 0;
+        case TOK_MULTIPLY:
+            return 1;
+        case TOK_POINTER:
+            return 0;
+        case TOK_BITWISE_AND:
+            return 1;
+        case TOK_ADDRESS:
+            return 0;
+        case TOK_POSITIVE:
+            return 1;
+        case TOK_ADD:
+            return 0;
+        case TOK_NEGATIVE:
+            return 1;
+        case TOK_SUBTRACT:
+            return 0;
+        /*case TOK_INCREMENT:
         case TOK_DECREMENT:
             if(prefix_postfix == -1) {
                 return 1;
@@ -333,10 +399,60 @@ int is_left_associative(token *tok, int prefix_postfix) {
                 return 1;
             } else {
                 return 0;
-            }
+            }*/
     }
     // should never get here
     error(tok, "Strange operator: %s\n", get_string_from_toktype(tok->type));
+}
+
+tree *parse_reverse_polish(opstack *stack) {
+    if(stack->start == NULL) {
+        error(tokenizer_peek(), "Bad expression\n");
+    }
+    token *first = opstack_peek_fifo(stack).value;
+    opstack *tmpstack = create_opstack();
+    while(!opstack_empty(stack)) {
+        token *tok = (token *)opstack_pop_fifo(stack).value;
+        print_token(tok);
+        if(is_operator(tok->type)) {
+            if(is_single_argument(tok->type)) {
+                tree *t = create_tree(TREETYPE_OPERATOR);
+                t->data.tok = tok;
+                t->left = opstack_pop(tmpstack).value;
+                opstack_push(tmpstack, t, 0);
+            } else {
+                tree *t = create_tree(TREETYPE_OPERATOR);
+                t->data.tok = tok;
+                t->right = opstack_pop(tmpstack).value;
+                t->left = opstack_pop(tmpstack).value;
+                opstack_push(tmpstack, t, 0);
+            }
+        } else if(tok->type == TOK_INT_CONST) {
+            tree *t = create_tree(TREETYPE_INTEGER);
+            t->data.int_value = tok->value;
+            opstack_push(tmpstack, t, 0);
+        } else if(tok->type == TOK_CHAR_CONST) {
+            tree *t = create_tree(TREETYPE_CHAR);
+            t->data.int_value = tok->value;
+            opstack_push(tmpstack, t, 0);
+        } else if(tok->type == TOK_STRING_CONST) {
+            tree *t = create_tree(TREETYPE_STRING);
+            t->data.string_value = strdup(tok->string);
+            opstack_push(tmpstack, t, 0);
+        } else if(tok->type == TOK_IDENTIFIER) {
+            tree *t = create_tree(TREETYPE_VARIABLE);
+            t->data.var = get_variable(tok);
+            opstack_push(tmpstack, t, 0);
+        } else {
+            error(tok, "Weird value: %d\n", tok->type);
+        }
+    }
+    if(tmpstack->start != NULL && tmpstack->start == tmpstack->end) {
+        tree *t = (tree *)opstack_pop(tmpstack).value;
+        delete_opstack(tmpstack);
+        return t;
+    }
+    error(first, "Bad expression\n");
 }
 
 void opmod(token *tok, int prefix_postfix) {
@@ -344,30 +460,61 @@ void opmod(token *tok, int prefix_postfix) {
         case TOK_STAR:
             if(prefix_postfix == 0) {
                 tok->type = TOK_MULTIPLY;
-            } else {
+            } else if(prefix_postfix == 1) {
                 tok->type = TOK_POINTER;
+            } else {
+                error(tok, "Error parsing token\n");
             }
+            break;
         case TOK_AMPERSAND:
             if(prefix_postfix == 0) {
                 tok->type = TOK_BITWISE_AND;
-            } else {
+            } else if(prefix_postfix == 1) {
                 tok->type = TOK_ADDRESS;
+            } else {
+                error(tok, "Error parsing token\n");
             }
+            break;
         case TOK_PLUS:
             if(prefix_postfix == 0) {
+                tok->type = TOK_ADD;
+            } else if(prefix_postfix == 1) {
                 tok->type = TOK_POSITIVE;
             } else {
-                tok->type = TOK_ADD;
+                error(tok, "Error parsing token\n");
             }
+            break;
         case TOK_MINUS:
             if(prefix_postfix == 0) {
+                tok->type = TOK_SUBTRACT;
+            } else if(prefix_postfix == 1) {
                 tok->type = TOK_NEGATIVE;
             } else {
-                tok->type = TOK_SUBTRACT;
+                error(tok, "Error parsing token\n");
             }
+            break;
+        case TOK_INCREMENT:
+            if(prefix_postfix == -1) {
+                tok->type = TOK_POSTFIX_INCREMENT;
+            } else if(prefix_postfix == 1) {
+                tok->type = TOK_PREFIX_INCREMENT;
+            } else {
+                error(tok, "Error parsing token\n");
+            }
+            break;
+        case TOK_DECREMENT:
+            if(prefix_postfix == -1) {
+                tok->type = TOK_POSTFIX_DECREMENT;
+            } else if(prefix_postfix == 1) {
+                tok->type = TOK_PREFIX_DECREMENT;
+            } else {
+                error(tok, "Error parsing token\n");
+            }
+            break;
     }
 }
 
+// TODO: actually get this working correctly...
 tree *parse_expression2(int end_type, int end_type2) {
     debug(0, "parse_expression()\n");
     // shunting yard
@@ -375,7 +522,7 @@ tree *parse_expression2(int end_type, int end_type2) {
     opstack *out = create_opstack();
     opstack *tmp = create_opstack();
     
-    int prefix_postfix = -1;
+    int prefix_postfix = 1;
     
     token *tok = tokenizer_peek();
     while(tok->type != TOK_EOF && tok->type != end_type && tok->type != end_type2) {
@@ -394,18 +541,20 @@ tree *parse_expression2(int end_type, int end_type2) {
             tok->type == TOK_STRING_CONST || tok->type == TOK_FLOAT_CONST || tok->type == TOK_DOUBLE_CONST ||
             tok->type == TOK_IDENTIFIER
         ) {
-            opstack_push(out, tok);
+            opstack_push(out, tok, 0);
             token *peeked = tokenizer_peek();
+            print_token(peeked);
             if(peeked->type == TOK_INCREMENT || peeked->type == TOK_DECREMENT) {
                 prefix_postfix = -1;
             } else {
                 prefix_postfix = 0;
             }
         } else if(tok->type == TOK_LPAREN) {
-            opstack_push(tmp, tok);
+            opstack_push(tmp, tok, prefix_postfix);
         } else if(tok->type == TOK_RPAREN) {
-            while(!opstack_empty(tmp) && opstack_peek(tmp)->type != TOK_LPAREN) {
-                opstack_push(out, opstack_pop(tmp));
+            while(!opstack_empty(tmp) && ((token *)opstack_peek(tmp).value)->type != TOK_LPAREN) {
+                opstack_link popped = opstack_pop(tmp);
+                opstack_push(out, popped.value, popped.prefix_postfix);
             }
             if(opstack_empty(out)) {
                 error(tok, "Mismatched parenthesis");
@@ -415,12 +564,19 @@ tree *parse_expression2(int end_type, int end_type2) {
             if(prefix_postfix > 1) {
                 error(tok, "Error parsing token\n");
             }
-            while(!opstack_empty(tmp) && opstack_peek(tmp)->type != TOK_LPAREN &&
-                  (precedence(opstack_peek(tmp), prefix_postfix) < precedence(tok, prefix_postfix)
-                      || (precedence(opstack_peek(tmp), prefix_postfix) == precedence(tok, prefix_postfix) && is_left_associative(tok, prefix_postfix)))) {
-                opstack_push(out, opstack_pop(tmp));
+            opmod(tok, prefix_postfix);
+            while(
+                !opstack_empty(tmp) &&
+                ((token *)opstack_peek(tmp).value)->type != TOK_LPAREN && (
+                    precedence(opstack_peek(tmp).value, opstack_peek(tmp).prefix_postfix) < precedence(tok, prefix_postfix) || (
+                        precedence(opstack_peek(tmp).value, opstack_peek(tmp).prefix_postfix) == precedence(tok, prefix_postfix) &&
+                        is_left_associative(tok, prefix_postfix)
+                    )
+                )
+            ) {
+                opstack_push(out, opstack_pop(tmp).value, 0);
             }
-            opstack_push(tmp, tok);
+            opstack_push(tmp, tok, prefix_postfix);
             prefix_postfix++;
         }
         tok = tokenizer_peek();
@@ -429,21 +585,21 @@ tree *parse_expression2(int end_type, int end_type2) {
         error(tokenizer_peek(), "Reached EOF while parsing expression\n");
     }
     while(!opstack_empty(tmp)) {
-        opstack_push(out, opstack_pop(tmp));
+        opstack_push(out, opstack_pop(tmp).value, 0);
     }
     //tokenizer_get();
     #ifdef PARSER_DEBUG
         printf("Reverse Polish: ");
-        print_opstack(out);
+        print_opstack_tokens(out);
     #endif
-    return parse_reverse_polish(tmp);
+    tree *expression = parse_reverse_polish(out);
+    return optimize_expression(expression);
 }
 
 tree *parse_expression(int end_type) {
     tree *output = parse_expression2(end_type, 0);
-    // <hacky>
+    // hacky
     tokenizer_get();
-    // </hacky>
     return output;
 }
 
@@ -480,18 +636,43 @@ tree *parse_switch() {
 // TODO
 tree *parse_asm(token *asmtok) {
     debug(0, "parse_asm()\n");
-    tree *out = NULL;
-    token *tok = tokenizer_get();
-    while(tok->type != TOK_EOF && tok->type != TOK_SEMICOLON) {
-        tok = tokenizer_get();
+    if(tokenizer_peek()->type == TOK_SEMICOLON) {
+        return NULL;
     }
-    if(tok->type == TOK_EOF) {
-        error(asmtok, "Reached EOF while parsing asm.\n");
+    tree *out = create_tree(TREETYPE_ASM);
+    tree *tmp = out;
+    while(1) {
+        token *tok = tokenizer_get();
+        tree *t;
+        if(tok->type == TOK_INT_CONST) {
+            t = create_tree(TREETYPE_INTEGER);
+            t->data.int_value = tok->value;
+        } else if(tok->type == TOK_IDENTIFIER) {
+            variable *var = get_variable_noerror(tok);
+            if(var == NULL) {
+                t = create_tree(TREETYPE_IDENTIFIER);
+                t->data.string_value = strdup(tok->string);
+            } else {
+                t = create_tree(TREETYPE_VARIABLE);
+                t->data.var = var;
+            }
+        } else {
+            error(tok, "Unexpected token\n");
+        }
+        tmp->left = t;
+        if(tokenizer_peek()->type == TOK_SEMICOLON) {
+            break;
+        }
+        if(tokenizer_peek()->type == TOK_EOF) {
+            error(asmtok, "Reached EOF while parsing asm\n");
+        }
+        tree *new = create_tree(TREETYPE_ASM);
+        tmp->right = new;
+        tmp = tmp->right;
     }
+    tokenizer_get(); // ;
     return out;
 }
-
-void print_treetype(int type);
 
 tree *parse_code() {
     debug(1, "parse_code()\n");
@@ -513,6 +694,7 @@ tree *parse_code() {
     } else if(next->type == TOK_SWITCH) {
         out = parse_switch();
     } else if(next->type == TOK_IDENTIFIER) {
+        variable *var = get_variable(next);
         token *next2 = expect(
             TOK_LPAREN,
             TOK_INCREMENT, TOK_DECREMENT,
@@ -521,52 +703,91 @@ tree *parse_code() {
             TOK_RSHIFT_EQUAL
         );
         if(next2->type == TOK_LPAREN) {
-            while(1) {
-                parse_expression2(TOK_COMMA, TOK_RPAREN);
-                token *next3 = tokenizer_get();
-                if(next3->type != TOK_COMMA) {
-                    break;
+            out = create_tree(TREETYPE_FUNC_CALL);
+            out->left = create_tree(TREETYPE_VARIABLE);
+            out->left->data.var = var;
+            tree *tmp = out;
+            if(tokenizer_peek()->type != TOK_RPAREN) {
+                token *next3;
+                while(1) {
+                    tree *expression = parse_expression2(TOK_COMMA, TOK_RPAREN);
+                    tmp->right = create_tree(TREETYPE_ARG_LIST);
+                    tmp = tmp->right;
+                    tmp->left = expression;
+                    next3 = tokenizer_get();
+                    if(next3->type == TOK_RPAREN || next3->type == TOK_EOF) {
+                        break;
+                    }
+                }
+                if(next3->type == TOK_EOF) {
+                    error(next2, "Reached EOF while parsing function arguments\n");
                 }
             }
             expect(TOK_SEMICOLON);
         } else if(next2->type == TOK_INCREMENT) {
+            out = create_tree(TREETYPE_OPERATOR);
+            out->data.tok = next2;
+            out->left = create_tree(TREETYPE_VARIABLE);
+            out->left->data.var = var;
             expect(TOK_SEMICOLON);
         } else if(next2->type == TOK_DECREMENT) {
+            out = create_tree(TREETYPE_OPERATOR);
+            out->data.tok = next2;
+            out->left = create_tree(TREETYPE_VARIABLE);
+            out->left->data.var = var;
             expect(TOK_SEMICOLON);
         } else {
-            parse_expression(TOK_SEMICOLON);
+            out = create_tree(TREETYPE_ASSIGN);
+            out->data.tok = next2;
+            out->left = create_tree(TREETYPE_VARIABLE);
+            out->left->data.var = var;
+            out->right = parse_expression(TOK_SEMICOLON);
         }
     } else if(next->type == TOK_LBRACE) {
         out = create_tree(TREETYPE_BLOCK);
         tree *tmp = out;
         token *peeked = tokenizer_peek();
         while(1) {
-            tmp->left = parse_code();
-            printf("\n");
-            peeked = tokenizer_peek();
-            if(peeked->type == TOK_RBRACE || peeked->type == TOK_EOF) {
-                break;
+            tree *t = parse_code();
+            if(t != NULL) {
+                tmp->left = t;
+                printf("\n");
+                peeked = tokenizer_peek();
+                if(peeked->type == TOK_RBRACE || peeked->type == TOK_EOF) {
+                    break;
+                }
+                tmp->right = create_tree(TREETYPE_STATEMENT_LIST);
+                tmp = tmp->right;
+            } else {
+                peeked = tokenizer_peek();
+                if(peeked->type == TOK_RBRACE || peeked->type == TOK_EOF) {
+                    break;
+                }
             }
-            tmp->right = create_tree(TREETYPE_STATEMENT_LIST);
-            tmp = tmp->right;
         }
         if(peeked->type == TOK_EOF) {
             error(peeked, "Reached EOF while parsing block.\n");
         }
         tokenizer_get();
     } else if(next->type == TOK_ASM) {
-        parse_asm(next);
+        out = parse_asm(next);
+    } else if(next->type == TOK_SEMICOLON) {
     } else {
-        variable *type = parse_type2(next);
+        variable *var = parse_type2(next);
         token *name = expect(TOK_IDENTIFIER);
         token *t = expect(
-            TOK_EQUAL, TOK_PLUS_EQUAL, TOK_MINUS_EQUAL, TOK_TIMES_EQUAL, TOK_DIVIDE_EQUAL, TOK_MOD_EQUAL, TOK_AND_EQUAL, TOK_OR_EQUAL, TOK_XOR_EQUAL, TOK_LSHIFT_EQUAL, TOK_RSHIFT_EQUAL,
-            TOK_SEMICOLON
+            TOK_EQUAL, TOK_SEMICOLON
         );
         if(t->type == TOK_SEMICOLON) {
-            return NULL;
+            var->name = name->string;
+            add_variable(var);
         } else {
-            parse_expression(TOK_SEMICOLON);
+            out = create_tree(TREETYPE_ASSIGN);
+            out->left = create_tree(TREETYPE_VARIABLE);
+            out->left->data.var = var;
+            out->right = parse_expression(TOK_SEMICOLON);
+            var->name = name->string;
+            add_variable(var);
         }
     }
     return out;
@@ -616,6 +837,7 @@ tree *parse() {
     debug(0, "parse()\n");
     all_vars = create_varlist();
     local_vars = create_varlist();
+    current_scope = 0;
     tree *AST = parse_declaration_list();
     printf("ALL VARIABLES:\n");
     print_varlist(all_vars);
@@ -629,6 +851,16 @@ tree *create_tree(int type) {
     out->left = NULL;
     out->right = NULL;
     return out;
+}
+
+void free_tree(tree *t) {
+    if(t->left != NULL) {
+        free_tree(t->left);
+    }
+    if(t->right != NULL) {
+        free_tree(t->right);
+    }
+    free(t);
 }
 
 char *get_treetype_name(int type) {
@@ -651,28 +883,54 @@ char *get_treetype_name(int type) {
             return "WHILE";
         case TREETYPE_FOR:
             return "FOR";
+        case TREETYPE_VARIABLE:
+            return "VARIABLE";
+        case TREETYPE_OPERATOR:
+            return "OPERATOR";
+        case TREETYPE_ASM:
+            return "ASM";
+        case TREETYPE_IDENTIFIER:
+            return "IDENTIFIER";
+        case TREETYPE_FUNC_CALL:
+            return "FUNC_CALL";
+        case TREETYPE_ARG_LIST:
+            return "ARG_LIST";
+        case TREETYPE_INTEGER:
+            return "INTEGER";
+        case TREETYPE_CHAR:
+            return "CHAR";
+        case TREETYPE_STRING:
+            return "STRING";
     }
     return "(unknown)";
 }
 
-void print_treetype(int type) {
-    if(type == TREETYPE_NULL) {
-        printf("\x1b[91;1m");
+void print_treetype(tree *t) {
+    if(t->type == TREETYPE_INTEGER) {
+        printf("\x1b[94;1m%d\x1b[0m", t->data.int_value);
+    } else if(t->type == TREETYPE_STRING) {
+        printf("\x1b[94;1m\"%s\"\x1b[0m", t->data.string_value);
+    } else if(t->type == TREETYPE_VARIABLE) {
+        printf("\x1b[95;1m%s\x1b[0m", t->data.var->name);
+    } else if(t->type == TREETYPE_IDENTIFIER) {
+        printf("\x1b[94;1m\"%s\"\x1b[0m", t->data.string_value);
+    } else if(t->type == TREETYPE_OPERATOR) {
+        printf("\x1b[94;1m%s\x1b[0m", get_string_from_toktype(t->data.tok->type));
     } else {
-        printf("\x1b[94;1m");
+        printf("\x1b[92;1m%s\x1b[0m", get_treetype_name(t->type));
     }
-    printf("%s", get_treetype_name(type));
-    printf("\x1b[0m");
 }
 
 void print_tree2(tree *t, int indent) {
     if(!t->left && !t->right) {
-        print_treetype(t->type);
+        print_treetype(t);
         printf("\n");
     } else {
-        print_treetype(t->type);
+        print_treetype(t);
         printf(" {\n");
-        if(t->left != NULL) {
+        if(t->left == NULL) {
+            printf("%*sleft = \x1b[91;1mNULL\x1b[0m\n", indent + 2, "");
+        } else {
             printf("%*sleft = ", indent + 2, "");
             print_tree2(t->left, indent + 2);
         }

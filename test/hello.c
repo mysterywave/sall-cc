@@ -1,10 +1,10 @@
-void print(char *s) {
-    char *i = s;
-    int j = *i;
-    while(j) {
-        asm out j 0;
-        i++;
-        j = *i;
+void print(char *string) {
+    char *string_pointer = string;
+    int character = *string_pointer;
+    while(character) {
+        asm out character 0;
+        string_pointer++;
+        character = *string_pointer;
     }
 }
 

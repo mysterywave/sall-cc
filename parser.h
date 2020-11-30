@@ -16,17 +16,33 @@ enum {
     TREETYPE_WHILE,
     TREETYPE_FOR,
     TREETYPE_VARIABLE,
+    TREETYPE_OPERATOR,
+    TREETYPE_ASM,
+    TREETYPE_IDENTIFIER,
+    TREETYPE_FUNC_CALL,
+    TREETYPE_ARG_LIST,
+    
+    // constants
+    TREETYPE_INTEGER,
+    TREETYPE_CHAR,
+    TREETYPE_STRING,
 };
 
 typedef struct tree tree;
 
 struct tree {
     int type;
-    void *data;
+    union {
+        token *tok;
+        variable *var;
+        int int_value;
+        char *string_value;
+    } data;
     tree *left;
     tree *right;
 };
 
 tree *parse();
 tree *create_tree(int type);
+void free_tree(tree *t);
 void print_tree(tree *t);
