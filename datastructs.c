@@ -54,7 +54,16 @@ void string_builder_clear(string_builder *builder) {
 variable *create_variable() {
     variable *out = malloc(sizeof(variable));
     memset(out, 0, sizeof(variable));
+    out->address = -1;
     return out;
+}
+
+int get_variable_size(variable *in) {
+    if(in->pointers > 0 || in->is_function || in->type != VARTYPE_CHAR) {
+        return 2;
+    } else {
+        return 1;
+    }
 }
 
 void print_variable(variable *var) {
@@ -93,19 +102,26 @@ void print_variable(variable *var) {
         printf("  \x1b[94;1maddress\x1b[0m = %d\n", var->address);
     }
     if(var->is_function) {
-        printf("  \x1b[94;1mis_function\x1b[0m = true\n", var->is_function);
+        printf("  \x1b[94;1mfunction\x1b[0m\n");
     }
     if(var->is_argument) {
-        printf("  \x1b[94;1mis_argument\x1b[0m = true\n", var->is_argument);
+        printf("  \x1b[94;1margument\x1b[0m\n");
     }
     if(var->is_constant) {
-        printf("  \x1b[94;1mis_constant\x1b[0m = true\n", var->is_constant);
+        printf("  \x1b[94;1mconstant\x1b[0m\n");
+    }
+    if(var->is_register) {
+        printf("  \x1b[94;1mregister\x1b[0m\n");
+    }
+    if(var->is_unsigned) {
+        printf("  \x1b[94;1munsigned\x1b[0m\n");
     }
     printf("}\n");
 }
 
 varlist *create_varlist() {
     varlist *list = malloc(sizeof(varlist));
+    list->bytes_size = -1;
     list->length = 0;
     list->buffer_length = 16;
     list->list = malloc(16 * sizeof(variable *));
@@ -282,4 +298,37 @@ void print_opstack_tokens(opstack *stack) {
         i++;
     }
     printf("]\n");
+}
+
+void global_list_init(global_list *list) {
+    list->start = NULL;
+    list->end = NULL;
+}
+
+void global_list_end(global_list *list) {
+    global_link *link = list->start;
+    while(link) {
+        if(link->type == GLOBAL_TYPE_STRING) {
+            free(link->value.string_value);
+        }
+        free(link);
+        link = link->next;
+    }
+    list->start = NULL;
+    list->end = NULL;
+}
+
+void global_list_add_string(global_list *list, char *name, char *string) {
+    global_link *link = malloc(sizeof(global_link));
+    link->name = name;
+    link->value.string_value = strdup(string);
+    link->type = GLOBAL_TYPE_STRING;
+    link->next = NULL;
+    if(list->start == NULL) {
+        list->start = link;
+        list->end = link;
+    } else {
+        list->end->next = link;
+        list->end = link;
+    }
 }

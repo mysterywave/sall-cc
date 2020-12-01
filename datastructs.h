@@ -44,6 +44,8 @@ typedef struct variable {
     int is_argument;
     int is_function;
     int is_constant;
+    int is_register;
+    int is_unsigned;
     
     int scope_level;
     
@@ -52,8 +54,10 @@ typedef struct variable {
 
 variable *create_variable();
 void delete_variable();
+int get_variable_size(variable *in);
 
 struct varlist {
+    int bytes_size;
     int length;
     int buffer_length;
     variable **list;
@@ -104,3 +108,28 @@ int opstack_empty(opstack *stack);
 
 // only use this if the opstack contains tokens
 void print_opstack_tokens(opstack *stack);
+
+enum {
+    GLOBAL_TYPE_STRING
+};
+
+typedef struct global_link global_link;
+
+struct global_link {
+    char *name;
+    union {
+        char *string_value;
+    } value;
+    int type;
+    global_link *next;
+};
+
+typedef struct global_list {
+    global_link *start;
+    global_link *end;
+} global_list;
+
+void global_list_init(global_list *list);
+void global_list_end(global_list *list);
+
+void global_list_add_string(global_list *list, char *name, char *string);

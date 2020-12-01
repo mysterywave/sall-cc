@@ -21,6 +21,7 @@ enum {
     TREETYPE_IDENTIFIER,
     TREETYPE_FUNC_CALL,
     TREETYPE_ARG_LIST,
+    TREETYPE_DEFINE,
     
     // constants
     TREETYPE_INTEGER,

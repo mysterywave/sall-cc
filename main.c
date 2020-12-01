@@ -5,6 +5,7 @@
 
 #include "tokenizer.h"
 #include "parser.h"
+#include "codegen.h"
 
 void debug_tokens() {
     while(tokenizer_peek()->type != TOK_EOF) {
@@ -49,8 +50,16 @@ int main(int argc, char *argv[]) {
     
     //debug_tokens();
     
-    parse();
+    tree *AST = parse();
     
-    printf("done.\n");
+    FILE *outputf = fopen("test/output.sall", "w");
+    
+    if(outputf == NULL) {
+        printf("Cannot open file for writing.");
+        return 1;
+    }
+    
+    generate(outputf, AST);
+    
     return 0;
 }

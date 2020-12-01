@@ -342,7 +342,6 @@ token *tokenizer_get2() {
         string_builder_clear(&tok);
         return out;
     }
-    printf("####################### RETURNING EOF #####################\n");
     output = create_token(TOK_EOF);
     return output;
 }

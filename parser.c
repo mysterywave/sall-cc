@@ -7,9 +7,11 @@
 #include "tokenizer.h"
 #include "optimizer.h"
 
-#define PARSER_DEBUG
+//#define PARSER_DEBUG
+#define PRINT_AST
 
-#define expect(...) _expect((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
+#define expect(...) _expect_1((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
+#define expect_peek(...) _expect_peek((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
 
 #ifdef PARSER_DEBUG
     #define macro_to_string_1(x) #x
@@ -120,18 +122,13 @@ variable *get_variable(token *tok) {
     return out;
 }
 
-token *_expect(int n, ...) {
-    token *tok = tokenizer_get();
-    
-    va_list ap;
-    va_start(ap, n);
+token *_expect(token *tok, int n, va_list list) {
     int i;
     for(i = 0; i < n; i++) {
-        if(tok->type == va_arg(ap, int)) {
+        if(tok->type == va_arg(list, int)) {
             return tok;
         }
     }
-    va_end(ap);
     
     /*printf("Expecting ");
     va_list ap2;
@@ -151,9 +148,46 @@ token *_expect(int n, ...) {
     error(tok, "Unexpected token\n");
 }
 
-variable *parse_type2(token *tok1) {
+token *_expect_1(int n, ...) {
+    token *tok = tokenizer_get();
+    va_list list;
+    va_start(list, n);
+    _expect(tok, n, list);
+    va_end(list);
+}
+
+token *_expect_peek(int n, ...) {
+    token *tok = tokenizer_peek();
+    va_list list;
+    va_start(list, n);
+    _expect(tok, n, list);
+    va_end(list);
+}
+
+variable *parse_type() {
     debug(0, "parse_type()\n");
     variable *output = create_variable();
+    token *tok = tokenizer_peek();
+    while(
+        tok->type == TOK_UNSIGNED ||
+        tok->type == TOK_CONST ||
+        tok->type == TOK_REGISTER
+    ) {
+        tokenizer_get();
+        switch(tok->type) {
+            case TOK_UNSIGNED:
+                output->is_unsigned = 1;
+                break;
+            case TOK_CONST:
+                output->is_constant = 1;
+                break;
+            case TOK_REGISTER:
+                output->is_register = 1;
+                break;
+        }
+        tok = tokenizer_peek();
+    }
+    token *tok1 = expect(TOK_VOID, TOK_CHAR, TOK_INT, TOK_LONG, TOK_FLOAT, TOK_DOUBLE);
     switch(tok1->type) {
         case TOK_VOID:
             output->type = VARTYPE_VOID;
@@ -173,6 +207,8 @@ variable *parse_type2(token *tok1) {
         case TOK_DOUBLE:
             output->type = VARTYPE_DOUBLE;
             break;
+        default:
+            error(tok1, "Unknown type\n");
     }
     token *tok2 = tokenizer_peek();
     while(tok2->type == TOK_STAR) {
@@ -183,11 +219,6 @@ variable *parse_type2(token *tok1) {
     return output;
 }
 
-variable *parse_type() {
-    token *tok1 = expect(TOK_VOID, TOK_CHAR, TOK_INT, TOK_LONG, TOK_FLOAT, TOK_DOUBLE);
-    return parse_type2(tok1);
-}
-
 void parse_arg_definition(varlist *arglist) {
     debug(0, "parse_arg_definition()\n");
     variable *arg = parse_type();
@@ -195,6 +226,7 @@ void parse_arg_definition(varlist *arglist) {
     arg->name = name->string;
     arg->is_argument = 1;
     add_variable(arg);
+    varlist_add(arglist, arg);
     token *next = expect(TOK_RPAREN, TOK_COMMA);
     if(next->type == TOK_RPAREN) {
         return;
@@ -413,7 +445,6 @@ tree *parse_reverse_polish(opstack *stack) {
     opstack *tmpstack = create_opstack();
     while(!opstack_empty(stack)) {
         token *tok = (token *)opstack_pop_fifo(stack).value;
-        print_token(tok);
         if(is_operator(tok->type)) {
             if(is_single_argument(tok->type)) {
                 tree *t = create_tree(TREETYPE_OPERATOR);
@@ -543,7 +574,6 @@ tree *parse_expression2(int end_type, int end_type2) {
         ) {
             opstack_push(out, tok, 0);
             token *peeked = tokenizer_peek();
-            print_token(peeked);
             if(peeked->type == TOK_INCREMENT || peeked->type == TOK_DECREMENT) {
                 prefix_postfix = -1;
             } else {
@@ -678,22 +708,29 @@ tree *parse_code() {
     debug(1, "parse_code()\n");
     tree *out = NULL;
     int type = tokenizer_peek()->type;
-    token *next = expect(
+    /*token *next = expect_peek(
         TOK_WHILE, TOK_IF, TOK_FOR,
         TOK_IDENTIFIER,
         TOK_LBRACE,
         TOK_ASM,
+        TOK_SEMICOLON,
         TOK_VOID, TOK_CHAR, TOK_INT, TOK_LONG, TOK_FLOAT, TOK_DOUBLE, TOK_STRUCT, TOK_UNION
-    );
+    );*/
+    token *next = tokenizer_peek();
     if(next->type == TOK_WHILE) {
+        tokenizer_get();
         out = parse_while();
     } else if(next->type == TOK_IF) {
+        tokenizer_get();
         out = parse_if();
     } else if(next->type == TOK_FOR) {
+        tokenizer_get();
         out = parse_for();
     } else if(next->type == TOK_SWITCH) {
+        tokenizer_get();
         out = parse_switch();
     } else if(next->type == TOK_IDENTIFIER) {
+        tokenizer_get();
         variable *var = get_variable(next);
         token *next2 = expect(
             TOK_LPAREN,
@@ -744,6 +781,7 @@ tree *parse_code() {
             out->right = parse_expression(TOK_SEMICOLON);
         }
     } else if(next->type == TOK_LBRACE) {
+        tokenizer_get();
         out = create_tree(TREETYPE_BLOCK);
         tree *tmp = out;
         token *peeked = tokenizer_peek();
@@ -751,7 +789,6 @@ tree *parse_code() {
             tree *t = parse_code();
             if(t != NULL) {
                 tmp->left = t;
-                printf("\n");
                 peeked = tokenizer_peek();
                 if(peeked->type == TOK_RBRACE || peeked->type == TOK_EOF) {
                     break;
@@ -770,24 +807,35 @@ tree *parse_code() {
         }
         tokenizer_get();
     } else if(next->type == TOK_ASM) {
+        tokenizer_get();
         out = parse_asm(next);
     } else if(next->type == TOK_SEMICOLON) {
+        tokenizer_get();
     } else {
-        variable *var = parse_type2(next);
+        variable *var = parse_type(next);
         token *name = expect(TOK_IDENTIFIER);
+        if(get_variable_noerror(name) != NULL) {
+            error(name, "Variable name already defined.\n");
+        }
         token *t = expect(
             TOK_EQUAL, TOK_SEMICOLON
         );
         if(t->type == TOK_SEMICOLON) {
             var->name = name->string;
             add_variable(var);
-        } else {
-            out = create_tree(TREETYPE_ASSIGN);
+            out = create_tree(TREETYPE_DEFINE);
             out->left = create_tree(TREETYPE_VARIABLE);
             out->left->data.var = var;
-            out->right = parse_expression(TOK_SEMICOLON);
+        } else {
             var->name = name->string;
             add_variable(var);
+            out = create_tree(TREETYPE_DEFINE);
+            out->left = create_tree(TREETYPE_VARIABLE);
+            out->left->data.var = var;
+            out->right = create_tree(TREETYPE_ASSIGN);
+            out->right->left = create_tree(TREETYPE_VARIABLE);
+            out->right->left->data.var = var;
+            out->right->right = parse_expression(TOK_SEMICOLON);
         }
     }
     return out;
@@ -804,6 +852,7 @@ tree *parse_declaration() {
     if(peeked->type == TOK_LPAREN) { // function definition
         out = create_tree(TREETYPE_FUNCTION_DEFINITION);
         var->is_function = 1;
+        var->is_constant = 1;
         varlist *arglist = create_varlist();
         token *next = tokenizer_peek();
         if(next->type == TOK_RPAREN) {
@@ -812,7 +861,10 @@ tree *parse_declaration() {
             parse_arg_definition(arglist);
         }
         var->arguments = arglist;
-        out->left = parse_code();
+        tree *var_tree = create_tree(TREETYPE_VARIABLE);
+        var_tree->data.var = var;
+        out->left = var_tree;
+        out->right = parse_code();
     } else if(peeked->type == TOK_SEMICOLON) { // definition
         out = create_tree(TREETYPE_NULL); // TODO
     } else { // asignment definition
@@ -839,9 +891,13 @@ tree *parse() {
     local_vars = create_varlist();
     current_scope = 0;
     tree *AST = parse_declaration_list();
-    printf("ALL VARIABLES:\n");
-    print_varlist(all_vars);
-    print_tree(AST);
+    #ifdef PARSER_DEBUG
+        printf("ALL VARIABLES:\n");
+        print_varlist(all_vars);
+    #endif
+    #ifdef PRINT_AST
+        print_tree(AST);
+    #endif
     return AST;
 }
 
@@ -895,6 +951,8 @@ char *get_treetype_name(int type) {
             return "FUNC_CALL";
         case TREETYPE_ARG_LIST:
             return "ARG_LIST";
+        case TREETYPE_DEFINE:
+            return "DEFINE";
         case TREETYPE_INTEGER:
             return "INTEGER";
         case TREETYPE_CHAR:
