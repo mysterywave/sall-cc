@@ -169,9 +169,42 @@ int newline_found;
 token *create_token(int type);
 
 int get_char_value(char *string) {
-    if(strlen(string) > 1) {
+    int len = strlen(string);
+    if(len > 2 || (len == 2 && string[0] != '\\')) {
         printf("Error reading char: '%s'\n", string);
         exit(1);
+    } else if(len == 2) {
+        switch(string[1]) {
+            case '0':
+                return '\0';
+            case 'a':
+                return '\a';
+            case 'b':
+                return '\b';
+            case 'e':
+                return '\e';
+            case 'f':
+                return '\f';
+            case 'n':
+                return '\n';
+            case 'r':
+                return '\r';
+            case 't':
+                return '\t';
+            case 'v':
+                return '\v';
+            case '\\':
+                return '\\';
+            case '\'':
+                return '\'';
+            case '"':
+                return '"';
+            case '?':
+                return '\?';
+            default:
+                printf("Error: Unknown escape character \'\\%c\'", string[1]);
+                exit(0);
+        }
     }
     return string[0];
 }

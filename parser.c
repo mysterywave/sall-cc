@@ -8,7 +8,7 @@
 #include "optimizer.h"
 
 //#define PARSER_DEBUG
-#define PRINT_AST
+//#define PRINT_AST
 
 #define expect(...) _expect_1((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
 #define expect_peek(...) _expect_peek((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
@@ -676,6 +676,9 @@ tree *parse_asm(token *asmtok) {
         tree *t;
         if(tok->type == TOK_INT_CONST) {
             t = create_tree(TREETYPE_INTEGER);
+            t->data.int_value = tok->value;
+        } else if(tok->type == TOK_CHAR_CONST) {
+            t = create_tree(TREETYPE_CHAR);
             t->data.int_value = tok->value;
         } else if(tok->type == TOK_IDENTIFIER) {
             variable *var = get_variable_noerror(tok);

@@ -69,7 +69,7 @@ tree *compute_16bit(token *operator, uint16_t a, uint16_t b) {
 }
 
 tree *compute_8bit(token *operator, uint8_t a, uint8_t b) {
-    uint16_t output;
+    uint8_t output;
     switch(operator->type) {
         case TOK_DIVIDE:
             output = a / b;
@@ -147,12 +147,14 @@ tree *optimize_expression(tree *in) {
                     if(out == NULL) {
                         return in;
                     }
+                    printf("optimizing %d %s %d = %d\n", in->left->data.int_value, get_string_from_toktype(in->data.tok->type), in->right->data.int_value, out->data.int_value);
                     return out;
                 } else {
                     tree *out = compute_8bit(in->data.tok, in->left->data.int_value, in->right->data.int_value);
                     if(out == NULL) {
                         return in;
                     }
+                    printf("optimizing %d %s %d = %d\n", in->left->data.int_value, get_string_from_toktype(in->data.tok->type), in->right->data.int_value, out->data.int_value);
                     return out;
                 }
             } else {

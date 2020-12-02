@@ -90,13 +90,22 @@ void pop_used_registers() {
     }
 }
 
-char global_add_string_output[16];
+char string_output[16];
+
+// only use this for small output strings
+char *format(char *format, ...) {
+    va_list list;
+    va_start(list, format);
+    vsnprintf(string_output, sizeof(string_output), format, list);
+    va_end(list);
+    return string_output;
+}
 
 char *global_add_string(char *string) {
     globals++;
-    snprintf(global_add_string_output, sizeof(global_add_string_output), "STRING_%d", globals);
-    global_list_add_string(&globals_list, global_add_string_output, string);
-    return global_add_string_output;
+    char *s = format("STRING_%d", globals);
+    global_list_add_string(&globals_list, s, string);
+    return string_output;
 }
 
 char *gen_expression(tree *t, char *output1) {
@@ -116,6 +125,12 @@ char *gen_expression(tree *t, char *output1) {
         }
     } else if(t->type == TREETYPE_VARIABLE) {
         return variable_to_reg(t->data.var);
+    } else if(t->type == TREETYPE_INTEGER) {
+        char *s = format("%d", t->data.int_value);
+        return s;
+    } else if(t->type == TREETYPE_CHAR) {
+        char *s = format("%d", t->data.int_value);
+        return s;
     } else if(t->type == TREETYPE_STRING) {
         char *s = global_add_string(t->data.string_value);
         return s;
@@ -190,6 +205,10 @@ void gen_while(tree *t) {
 void _gen_asm(tree *t) {
     switch(t->left->type) {
         case TREETYPE_INTEGER: {
+            print_noindent("%d", t->left->data.int_value);
+            break;
+        }
+        case TREETYPE_CHAR: {
             print_noindent("%d", t->left->data.int_value);
             break;
         }
@@ -320,7 +339,9 @@ void gen_end() {
         }
         link = link->next;
     }
-    print("\n");
+    if(globals_list.start != NULL) {
+        print("\n");
+    }
     print("stack:\n");
 }
 
