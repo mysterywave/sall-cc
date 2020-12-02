@@ -10,6 +10,7 @@ FILE *output_file;
 char *reg_names[] = {"%r1", "%r2", "%r3", "%r4", "%r5"};
 variable *used_regs[] = {NULL, NULL, NULL, NULL, NULL};
 const int reg_count = sizeof(used_regs) / sizeof(used_regs[0]);
+int scope_level;
 
 void gen_code(tree *t);
 
@@ -63,6 +64,15 @@ void use_register(variable *var) {
     }
     printf("Error: There's not enough registers to hold variable: %s\n", var->name);
     exit(1);
+}
+
+void clear_used_registers_scope() {
+    int i;
+    for(i = 0; i < reg_count; i++) {
+        if(used_regs[i] != NULL && used_regs[i]->scope_level == scope_level) {
+            used_regs[i] = NULL;
+        }
+    }
 }
 
 void clear_used_registers() {
@@ -257,7 +267,10 @@ void gen_statement_list(tree *t) {
 
 void gen_block(tree *t) {
     indent_level++;
+    scope_level++;
     gen_statement_list(t);
+    clear_used_registers_scope();
+    scope_level--;
     indent_level--;
 }
 
@@ -288,6 +301,7 @@ void gen_code(tree *t) {
 }
 
 void gen_function(tree *t) {
+    scope_level++;
     variable *var = t->left->data.var;
     print("func_%s:\n", var->name);
     varlist *arguments = var->arguments;
@@ -310,6 +324,7 @@ void gen_function(tree *t) {
     }
     print("\n");
     clear_used_registers();
+    scope_level--;
 }
 
 void gen_declaration(tree *t) {
@@ -361,6 +376,11 @@ void generate(FILE *output, tree *AST) {
     global_list_init(&globals_list);
     gen_start();
     gen_declaration_list(AST);
+    for(i = 0; i < reg_count; i++) {
+        if(used_regs[i] != 0) {
+            printf("STILL USED: %d\n", i);
+        }
+    }
     gen_end();
     global_list_end(&globals_list);
 }

@@ -102,6 +102,16 @@ void add_variable(variable *var) {
     varlist_add(local_vars, var);
 }
 
+void clear_current_scope() {
+    int i;
+    for(i = local_vars->length - 1; i >= 0; i--) {
+        if(local_vars->list[i]->scope_level != current_scope) {
+            return;
+        }
+        local_vars->length = i;
+    }
+}
+
 // tok should always be an identifier
 variable *get_variable_noerror(token *tok) {
     char *s = tok->string;
@@ -785,6 +795,7 @@ tree *parse_code() {
         }
     } else if(next->type == TOK_LBRACE) {
         tokenizer_get();
+        current_scope++;
         out = create_tree(TREETYPE_BLOCK);
         tree *tmp = out;
         token *peeked = tokenizer_peek();
@@ -808,6 +819,8 @@ tree *parse_code() {
         if(peeked->type == TOK_EOF) {
             error(peeked, "Reached EOF while parsing block.\n");
         }
+        clear_current_scope();
+        current_scope--;
         tokenizer_get();
     } else if(next->type == TOK_ASM) {
         tokenizer_get();
@@ -853,6 +866,7 @@ tree *parse_declaration() {
     add_variable(var);
     token *peeked = expect(TOK_LPAREN, TOK_SEMICOLON, TOK_EQUAL);
     if(peeked->type == TOK_LPAREN) { // function definition
+        current_scope++;
         out = create_tree(TREETYPE_FUNCTION_DEFINITION);
         var->is_function = 1;
         var->is_constant = 1;
@@ -868,6 +882,8 @@ tree *parse_declaration() {
         var_tree->data.var = var;
         out->left = var_tree;
         out->right = parse_code();
+        clear_current_scope();
+        current_scope--;
     } else if(peeked->type == TOK_SEMICOLON) { // definition
         out = create_tree(TREETYPE_NULL); // TODO
     } else { // asignment definition

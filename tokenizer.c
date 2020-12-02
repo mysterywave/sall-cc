@@ -217,12 +217,12 @@ int to_integer(char *string) {
         if(string[0] == '0' && string[1] == 'x') {
             for(i = len - 1; i >= 0; i--) {
                 output <<= 4;
-                if(string[i] >= '0' && string[i] <= '9') {
-                    output |= string[i] - '0';
-                } else if(string[i] >= 'a' && string[i] <= 'f') {
-                    output |= string[i] - 'a' + 10;
-                } else if(string[i] >= 'A' && string[i] <= 'F') {
-                    output |= string[i] - 'A' + 10;
+                if(string[len - 1 - i] >= '0' && string[len - 1 - i] <= '9') {
+                    output |= string[len - 1 - i] - '0';
+                } else if(string[len - 1 - i] >= 'a' && string[len - 1 - i] <= 'f') {
+                    output |= string[len - 1 - i] - 'a' + 10;
+                } else if(string[len - 1 - i] >= 'A' && string[len - 1 - i] <= 'F') {
+                    output |= string[len - 1 - i] - 'A' + 10;
                 } else {
                     return -1;
                 }
@@ -230,8 +230,8 @@ int to_integer(char *string) {
         } else if(string[0] == '0' && string[1] == 'b') {
             for(i = len - 1; i >= 0; i--) {
                 output <<= 1;
-                if(string[i] == '0' || string[i] == '1') {
-                    output |= string[i] - '0';
+                if(string[len - 1 - i] == '0' || string[len - 1 - i] == '1') {
+                    output |= string[len - 1 - i] - '0';
                 } else {
                     return -1;
                 }
@@ -240,8 +240,8 @@ int to_integer(char *string) {
     }
     for(i = len - 1; i >= 0; i--) {
         output *= 10;
-        if(string[i] >= '0' && string[i] <= '9') {
-            output += string[i] - '0';
+        if(string[len - 1 - i] >= '0' && string[len - 1 - i] <= '9') {
+            output += string[len - 1 - i] - '0';
         } else {
             return -1;
         }
