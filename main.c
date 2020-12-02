@@ -13,9 +13,9 @@ void debug_tokens() {
         char *s1 = get_string_from_toktype(tok->type);
         char *s2 = token_to_string(tok);
         if(strcmp(s1, s2) == 0) {
-            printf("TOKEN: %s\n", s2);
+            printf("%s\n", s2);
         } else {
-            printf("TOKEN: %s, %s\n", s2, s1);
+            printf("%s\t%s\n", s2, s1);
         }
     }
     exit(0);

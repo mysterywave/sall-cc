@@ -300,12 +300,40 @@ token *tokenizer_get2() {
             while((c = fgetc(file)) != '\n' && c != EOF) {
                 string_builder_add(&current_line, c);
             }
-            string_builder_get(&current_line);
             if(c == EOF) {
                 break;
             }
+            string_builder_add(&current_line, c);
+            //char *s = string_builder_get(&current_line);
+            //printf("\"%s\"\n", s);
         }
         while(c != EOF) {
+            if(string_builder_get_char(&current_line, line_offset) == '/' && string_builder_get_char(&current_line, line_offset + 1) == '/') {
+                while(string_builder_get_char(&current_line, line_offset) != '\n') {
+                    line_offset++;
+                }
+                newline_found = 1;
+                break;
+            } else if(string_builder_get_char(&current_line, line_offset) == '/' && string_builder_get_char(&current_line, line_offset + 1) == '*') {
+                line_offset++;
+                while(!(string_builder_get_char(&current_line, line_offset - 1) == '*' && string_builder_get_char(&current_line, line_offset) == '/')) {
+                    if(string_builder_get_char(&current_line, line_offset) == '\n') {
+                        line_num++;
+                        string_builder_clear(&current_line);
+                        line_offset = 0;
+                        while((c = fgetc(file)) != '\n' && c != EOF) {
+                            string_builder_add(&current_line, c);
+                        }
+                        if(c == EOF) {
+                            goto outer; // break out of both loops
+                        }
+                        string_builder_add(&current_line, c);
+                    }
+                    line_offset++;
+                }
+                line_offset++;
+                break;
+            }
             c = string_builder_get_char(&current_line, line_offset++);
             if(type == 2) {
                 while(c != ending_char && !(c == EOF || line_offset > current_line.length)) {
@@ -326,7 +354,7 @@ token *tokenizer_get2() {
                 }
                 c = string_builder_get_char(&current_line, line_offset++);
             }
-            if(line_offset > current_line.length) {
+            if(c == '\n') {
                 newline_found = 1;
                 if(tok.length != 0) {
                     char *string = string_builder_get(&tok);
@@ -338,7 +366,7 @@ token *tokenizer_get2() {
                     break;
                 }
             }
-            if(c == ' ' || c == '\t') {
+            if(c == ' ' || c == '\t' || c == '\n') {
                 type = 0;
             } else if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
                 type = 1;
@@ -369,6 +397,7 @@ token *tokenizer_get2() {
             }
         }
     }
+    outer:;
     char *string = string_builder_get(&tok);
     if(strlen(string) != 0) {
         token *out = string_to_token(string);
@@ -489,6 +518,9 @@ char *token_to_string(token *tok) {
         return token_to_string_output;
     } else if(tok->type == TOK_INT_CONST) {
         snprintf(token_to_string_output, sizeof(token_to_string_output), "%d", tok->value);
+        return token_to_string_output;
+    } else if(tok->type == TOK_CHAR_CONST) {
+        snprintf(token_to_string_output, sizeof(token_to_string_output), "'%c'", tok->value);
         return token_to_string_output;
     }
     int i;

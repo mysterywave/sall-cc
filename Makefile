@@ -2,7 +2,8 @@
 CC := gcc
 CCFLAGS :=
 DBGFLAGS := -g
-PRODFLAGS := -static -O3
+#PRODFLAGS := -static -O3
+PRODFLAGS :=
 CCOBJFLAGS := $(CCFLAGS) -c
 
 # path macros
