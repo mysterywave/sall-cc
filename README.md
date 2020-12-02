@@ -7,6 +7,6 @@ To run, do
 
 `./mini-cc [input-file]`
 
-This can also read from stdout, so you can do
+This can also read from stdin, so you can do
 
 `./mini-cc`
