@@ -1,4 +1,4 @@
-#include <stdio.h>
+      #include       <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -6,6 +6,8 @@
 #include "tokenizer.h"
 #include "parser.h"
 #include "codegen.h"
+
+extern tokenizer *current_tokenizer;
 
 void debug_tokens() {
     while(tokenizer_peek()->type != TOK_EOF) {
@@ -15,7 +17,8 @@ void debug_tokens() {
         if(strcmp(s1, s2) == 0) {
             printf("%s\n", s2);
         } else {
-            printf("%s\t%s\n", s2, s1);
+            int n = printf("%s", s2);
+            printf("%*s%s\n", 20 - n, "", s1);
         }
     }
     exit(0);
@@ -46,9 +49,12 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s [input] [output]\n", argv[0]);
         return 1;
     }
-    tokenizer_init(input, input_filename);
     
-    //debug_tokens();
+    init_tokenizer();
+    
+    current_tokenizer = tokenizer_create(NULL, input, input_filename);
+    
+    debug_tokens();
     
     tree *AST = parse();
     
@@ -60,6 +66,8 @@ int main(int argc, char *argv[]) {
     }
     
     generate(outputf, AST);
+    
+    // TODO: free reader
     
     return 0;
 }

@@ -3,6 +3,7 @@
 #include <memory.h>
 
 #include "datastructs.h"
+#include "tokenizer.h"
 
 void string_builder_init(string_builder *builder) {
     builder->length = 0;

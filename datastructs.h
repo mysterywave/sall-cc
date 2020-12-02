@@ -1,11 +1,12 @@
-#pragma once
-
-#include "tokenizer.h"
+#ifndef DATASTRUCTS_H
+#define DATASTRUCTS_H
 
 #define STRING_BUILDER_GROW_EXPONENTIAL 0
 #define STRING_BUILDER_DEALLOC_ON_CLEAR 0
 
 #define VARLIST_GROW_EXPONENTIAL 0
+
+typedef struct token token;
 
 typedef struct varlist varlist;
 
@@ -133,3 +134,5 @@ void global_list_init(global_list *list);
 void global_list_end(global_list *list);
 
 void global_list_add_string(global_list *list, char *name, char *string);
+
+#endif

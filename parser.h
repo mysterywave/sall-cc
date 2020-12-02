@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PARSER_H
+#define PARSER_H
 
 #include "datastructs.h"
 
@@ -47,3 +48,5 @@ tree *parse();
 tree *create_tree(int type);
 void free_tree(tree *t);
 void print_tree(tree *t);
+
+#endif

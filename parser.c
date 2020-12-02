@@ -23,10 +23,6 @@
     #define error(...) _error(__VA_ARGS__)
 #endif
 
-extern string_builder current_line;
-extern char *filename;
-extern int line_num;
-
 varlist *all_vars;
 varlist *local_vars;
 int current_scope;
@@ -49,6 +45,7 @@ void cause_segfault() {
     *i = 0;
 }
 
+extern tokenizer *current_tokenizer;
 extern toklist *tokens_to_free;
 
 void _debug(int i, char *format, ...) {
@@ -60,35 +57,35 @@ void _debug(int i, char *format, ...) {
         tok = tokens_to_free->list[tokens_to_free->length - 1];
     }
     // </hacky>
-    printf("\x1b[1m%s:%d:12:\x1b[0m ", filename, line_num, tok->line_offset - 1);
+    printf("\x1b[1m%s:%d:12:\x1b[0m ", current_tokenizer->filename, current_tokenizer->line_num, tok->line_offset - 1);
     va_list ap;
     va_start(ap, format);
     vprintf(format, ap);
     va_end(ap);
     if(tok->line_offset != -1) {
-        char *line = string_builder_get(&current_line);
+        char *line = string_builder_get(&current_tokenizer->current_line);
         int pos = tok->line_offset - 1;
         int len = tok->length;
         printf("%.*s", pos, line);
         printf("\x1b[92;1m%.*s\x1b[0m", tok->length, line + pos);
-        printf("%.*s\n", current_line.length - (pos + len), line + pos + len);
+        printf("%.*s\n", current_tokenizer->current_line.length - (pos + len), line + pos + len);
         printf("\x1b[92;1m%*s^\x1b[0m\n\n", tok->line_offset - 1, "");
     }
 }
 
 void _error(token *tok, char *format, ...) {
-    printf("\x1b[1m%s:%d:12:\x1b[0m \x1b[91;1merror:\x1b[0m ", filename, line_num, tok->line_offset - 1);
+    printf("\x1b[1m%s:%d:12:\x1b[0m \x1b[91;1merror:\x1b[0m ", current_tokenizer->filename, current_tokenizer->line_num, tok->line_offset - 1);
     va_list ap;
     va_start(ap, format);
     vprintf(format, ap);
     va_end(ap);
     if(tok->line_offset != -1) {
-        char *line = string_builder_get(&current_line);
+        char *line = string_builder_get(&current_tokenizer->current_line);
         int pos = tok->line_offset - 1;
         int len = tok->length;
         printf("%.*s", pos, line);
         printf("\x1b[91;1m%.*s\x1b[0m", tok->length, line + pos);
-        printf("%.*s\n", current_line.length - (pos + len), line + pos + len);
+        printf("%.*s\n", current_tokenizer->current_line.length - (pos + len), line + pos + len);
         printf("\x1b[91;1m%*s^\x1b[0m\n", tok->line_offset - 1, "");
     }
     //cause_segfault();

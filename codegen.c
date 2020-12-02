@@ -4,6 +4,7 @@
 
 #include "codegen.h"
 #include "datastructs.h"
+#include "tokenizer.h"
 
 int indent_level;
 FILE *output_file;

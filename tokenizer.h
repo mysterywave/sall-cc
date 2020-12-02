@@ -1,4 +1,7 @@
-#pragma once
+#ifndef TOKENIZER_H
+#define TOKENIZER_H
+
+#include "datastructs.h"
 
 enum {
     TOK_EOF = 0x0000,
@@ -117,6 +120,26 @@ enum {
     TOK_IDENTIFIER = 0x6000
 };
 
+typedef struct tokenizer tokenizer;
+
+struct tokenizer {
+    tokenizer *parent;
+    
+    FILE *file;
+    char *filename;
+    int line_num;
+    int line_offset;
+    string_builder current_line;
+    token *output;
+    string_builder tok;
+    int type;
+    int ptype;
+    char c;
+    char ending_char;
+    int peeked;
+    int newline_found;
+};
+
 typedef struct token {
     int type;
     char *string;
@@ -128,13 +151,16 @@ typedef struct token {
     int length;
 } token;
 
-void tokenizer_init();
-void tokenizer_end();
+void init_tokenizer();
+void end_tokenizer();
+tokenizer *tokenizer_create(tokenizer *parent, FILE *in, char *filename_in);
+void tokenizer_delete(tokenizer *reader);
+token *tokenizer_get_f(tokenizer *reader);
+token *tokenizer_peek_f(tokenizer *reader);
 token *tokenizer_get();
 token *tokenizer_peek();
-void delete_token(token *t);
 
-token *string_to_token(char *string);
+void delete_token(token *t);
 char *get_string_from_toktype(int type);
 void free_tokens();
 int get_toktype_from_string();
@@ -144,3 +170,5 @@ void print_token(token *tok);
 int is_operator(int toktype);
 int is_single_argument(int type);
 int is_constant(int toktype);
+
+#endif
