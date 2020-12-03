@@ -58,10 +58,10 @@ int main(int argc, char *argv[]) {
     
     tree *AST = parse();
     
-    FILE *outputf = fopen("test/output.sall", "w");
+    FILE *outputf = fopen("output.sall", "w");
     
     if(outputf == NULL) {
-        printf("Cannot open file for writing.");
+        printf("Cannot open file for writing.\n");
         return 1;
     }
     
