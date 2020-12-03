@@ -126,7 +126,12 @@ char *gen_expression(tree *t, char *output1) {
             case TOK_POINTER: {
                 variable *var = t->left->data.var;
                 char *reg = variable_to_reg(var);
-                print("mov [%s] %s\n", reg, output);
+                print_variable(var);
+                if(get_variable_size_deref(var, 1) == 1) {
+                    print("mov8 [%s] %s\n", reg, output);
+                } else {
+                    print("mov [%s] %s\n", reg, output);
+                }
                 return output;
             }
             default: {
@@ -156,7 +161,11 @@ void gen_assign(tree *t) {
         char *output = variable_to_reg(var);
         char *exp = gen_expression(t->right, output);
         if(strcmp(exp, output) != 0) {
-            print("mov %s %s\n", exp, output);
+            if(get_variable_size(var) == 1) {
+                print("mov8 %s %s\n", exp, output);
+            } else {
+                print("mov %s %s\n", exp, output);
+            }
         }
     } else if(var->is_argument) {
         printf("Error: Arguments are all const in this version of the compiler.\n");
@@ -209,6 +218,7 @@ void gen_while(tree *t) {
     char *exp = gen_expression(t->left, "%oo");
     print("if %s while_%d_end\n", exp, whiles);
     gen_code(t->right);
+    print("mov while_%d %%ip\n", whiles);
     print("while_%d_end:\n", whiles);
     whiles++;
 }
@@ -343,7 +353,7 @@ void gen_declaration_list(tree *t) {
 
 void gen_start() {
     print("mov stack %%sp\n");
-    print("mov main %%ip\n");
+    print("mov func_main %%ip\n");
     print("\n");
 }
 

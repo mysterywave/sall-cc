@@ -1,6 +1,6 @@
 void print(char *string) {
     register char *string_pointer = string;
-    register int character = *string_pointer;
+    register char character = *string_pointer;
     while(character) {
         asm out character 0;
         string_pointer++;

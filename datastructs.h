@@ -55,6 +55,7 @@ typedef struct variable {
 
 variable *create_variable();
 void delete_variable();
+int get_variable_size_deref(variable *in, int defref_level);
 int get_variable_size(variable *in);
 
 struct varlist {

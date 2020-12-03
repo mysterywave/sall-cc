@@ -59,12 +59,16 @@ variable *create_variable() {
     return out;
 }
 
-int get_variable_size(variable *in) {
-    if(in->pointers > 0 || in->is_function || in->type != VARTYPE_CHAR) {
+int get_variable_size_deref(variable *in, int deref_level) {
+    if(in->pointers - deref_level > 0 || in->is_function || in->type != VARTYPE_CHAR) {
         return 2;
     } else {
         return 1;
     }
+}
+
+int get_variable_size(variable *in) {
+    return get_variable_size_deref(in, 0);
 }
 
 void print_variable(variable *var) {

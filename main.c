@@ -1,4 +1,4 @@
-      #include       <stdio.h>
+#include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     
     current_tokenizer = tokenizer_create(NULL, input, input_filename);
     
-    debug_tokens();
+    //debug_tokens();
     
     tree *AST = parse();
     
