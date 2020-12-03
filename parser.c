@@ -8,7 +8,7 @@
 #include "optimizer.h"
 
 //#define PARSER_DEBUG
-//#define PRINT_AST
+#define PRINT_AST
 
 #define expect(...) _expect_1((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
 #define expect_peek(...) _expect_peek((sizeof((int[]){__VA_ARGS__})/sizeof(int)), __VA_ARGS__)
