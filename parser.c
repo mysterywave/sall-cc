@@ -696,6 +696,9 @@ tree *parse_asm(token *asmtok) {
                 t = create_tree(TREETYPE_VARIABLE);
                 t->data.var = var;
             }
+        } else if(tok->type == TOK_MOD) {
+            t = create_tree(TREETYPE_IDENTIFIER);
+                t->data.string_value = "%";
         } else {
             error(tok, "Unexpected token\n");
         }

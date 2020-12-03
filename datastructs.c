@@ -313,6 +313,7 @@ void global_list_init(global_list *list) {
 void global_list_end(global_list *list) {
     global_link *link = list->start;
     while(link) {
+        free(link->name);
         if(link->type == GLOBAL_TYPE_STRING) {
             free(link->value.string_value);
         }
@@ -325,7 +326,7 @@ void global_list_end(global_list *list) {
 
 void global_list_add_string(global_list *list, char *name, char *string) {
     global_link *link = malloc(sizeof(global_link));
-    link->name = name;
+    link->name = strdup(name);
     link->value.string_value = strdup(string);
     link->type = GLOBAL_TYPE_STRING;
     link->next = NULL;

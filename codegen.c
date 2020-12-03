@@ -113,8 +113,8 @@ char *format(char *format, ...) {
 }
 
 char *global_add_string(char *string) {
-    globals++;
     char *s = format("STRING_%d", globals);
+    globals++;
     global_list_add_string(&globals_list, s, string);
     return string_output;
 }
@@ -209,17 +209,31 @@ void gen_func_call(tree *t) {
     print("mov func_%s %%ip\n", var->name);
     print("call_return_%d:\n", call_returns);
     pop_used_registers();
+    int arg_size = 0;
+    for(i = args->length - 1; i >= 0; i--) {
+        arg_size += get_variable_size(args->list[i]);
+    }
+    print("sub %%sp %d\n", arg_size + 2);
+    print("mov %%oo %%sp\n");
     call_returns++;
 }
 
 void gen_while(tree *t) {
-    print("while_%d:\n", whiles);
-    char *exp = gen_expression(t->left, "%oo");
-    print("if %s while_%d_end\n", exp, whiles);
-    gen_code(t->right);
-    print("mov while_%d %%ip\n", whiles);
-    print("while_%d_end:\n", whiles);
-    whiles++;
+    if(t->left->type == TREETYPE_INTEGER) {
+        if(t->left->data.int_value != 0) {
+            print("while_%d:\n", whiles);
+            print("mov while_%d %%ip\n", whiles);
+            whiles++;
+        }
+    } else {
+        print("while_%d:\n", whiles);
+        char *exp = gen_expression(t->left, "%oo");
+        print("if %s while_%d_end\n", exp, whiles);
+        gen_code(t->right);
+        print("mov while_%d %%ip\n", whiles);
+        print("while_%d_end:\n", whiles);
+        whiles++;
+    }
 }
 
 void _gen_asm(tree *t) {
@@ -243,7 +257,9 @@ void _gen_asm(tree *t) {
         }
     }
     if(t->right != NULL) {
-        print_noindent(" ");
+        if(strcmp(t->left->data.string_value, "%") != 0) {
+            print_noindent(" ");
+        }
         _gen_asm(t->right);
     }
 }
@@ -328,9 +344,18 @@ void gen_function(tree *t) {
     print("return_%s:\n", var->name);
     if(strcmp(var->name, "main") == 0) {
         print("end\n");
+    } else if(strcmp(var->name, "interrupt") == 0) {
+        //print("end\n");
+        print("pop %%r5\n");
+        print("pop %%r4\n");
+        print("pop %%r3\n");
+        print("pop %%r2\n");
+        print("pop %%r1\n");
+        print("pop %%oo\n");
+        print("pop %%ip\n");
     } else {
         print("peek %d\n", -arg_size - 2);
-        print("mov %%oo ip\n");
+        print("mov %%oo %%ip\n");
     }
     print("\n");
     clear_used_registers();
@@ -353,6 +378,7 @@ void gen_declaration_list(tree *t) {
 void gen_start() {
     print("mov stack %%sp\n");
     print("mov func_main %%ip\n");
+    print("func_interrupt\n");
     print("\n");
 }
 
