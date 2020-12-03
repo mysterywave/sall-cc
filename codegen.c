@@ -126,7 +126,6 @@ char *gen_expression(tree *t, char *output1) {
             case TOK_POINTER: {
                 variable *var = t->left->data.var;
                 char *reg = variable_to_reg(var);
-                print_variable(var);
                 if(get_variable_size_deref(var, 1) == 1) {
                     print("mov8 [%s] %s\n", reg, output);
                 } else {
