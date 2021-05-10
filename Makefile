@@ -13,7 +13,7 @@ SRC_PATH := .
 DBG_PATH := debug
 
 # compile macros
-TARGET_NAME := mini-cc
+TARGET_NAME := sall-cc
 ifeq ($(OS),Windows_NT)
 	TARGET_NAME := $(addsuffix .exe,$(TARGET_NAME))
 endif
